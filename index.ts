@@ -9,6 +9,9 @@ import Logger from "./winston/winston";
 /* yargs doesn't support typescript yet */
 import yargs from "yargs/yargs";
 
+/* Import the routers */
+import {UserRouter} from './api/controller/UserRouter';
+
 /* Root Web Server */
 const App: Application = express();
 
@@ -48,6 +51,9 @@ App.use(express.json());
 App.use(express.urlencoded({extended: true}));
 
 logger.write.info("Middleware mounted.");
+
+/* Setup routes */
+App.use("users", UserRouter);
 
 /* Serve port */
 App.listen(config.server.port, () => {
