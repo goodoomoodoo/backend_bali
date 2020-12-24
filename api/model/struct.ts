@@ -28,10 +28,11 @@ export interface ChangeResultPacket {
  * User table
  */
 export interface User {
-    id: bigint;             // Primary Key
-    firstName: string;
-    lastName: string;
-    email: string;
+  id: string; // Primary Key
+  firstName: string;
+  lastName: string;
+  email: string;
+  version: number;
 }
 
 /**
@@ -39,10 +40,11 @@ export interface User {
  * Stash are own by users, and each stash should store a files and directories
  */
 export interface Stash {
-    id: bigint;            // Primary Key
-    owner: bigint;         // User.id Foreign Key, cascade delete
-    name: string;
-    createdDate: string;
+  id: string; // Primary Key
+  owner: string; // User.id Foreign Key, cascade delete
+  name: string;
+  createdDate: string;
+  version: number;
 }
 
 /**
@@ -50,23 +52,25 @@ export interface Stash {
  * Directory stores the files and sub directory
  */
 export interface Directory {
-    id: bigint;             // Primary Key
-    owner: bigint;          // User.id Foreign Key, cascade delete
-    stash: bigint;          // Stash.id Foreign Key, cascade delete
-    name: string;
-    createdDate: string;
-    timestamp: string;
+  id: string; // Primary Key
+  owner: string; // User.id Foreign Key, cascade delete
+  stash: string; // Stash.id Foreign Key, cascade delete
+  name: string;
+  createdDate: string;
+  timestamp: string;
+  version: number;
 }
 
 /**
  * FileEntry table
  */
 export interface FileEntry {
-    id: bigint;             // Primary Key
-    owner: bigint;          // Directory.id Foreign Key, cascade delete
-    directory: bigint;      // Directory.id Foreign Key, cascade delete
-    name: string;
-    content: string;
-    createdDate: string;
-    timestamp: string;
+  id: string; // Primary Key
+  owner: string; // Directory.id Foreign Key, cascade delete
+  directory: string; // Directory.id Foreign Key, cascade delete
+  name: string;
+  content: string;
+  createdDate: string;
+  timestamp: string;
+  version: number;
 }
