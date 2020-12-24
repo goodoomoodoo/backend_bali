@@ -1,5 +1,4 @@
 import express from 'express';
-import {logger} from '../../index';
 import {UserPacket, ChangeResultPacket} from '../model/struct';
 import {dbDistributor} from '../model/model';
 import {sendClientUser, sendClientResult} from '../messenger/index';
