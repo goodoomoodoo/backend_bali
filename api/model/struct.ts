@@ -1,13 +1,27 @@
 /**
  * struct.ts stores the database tables or schema
+ *
+ * Note: version number always starts at 1, sent by client.
  */
 
-export interface ResponsePacket {
-    packetUser?: User;
-    packetStash?: Stash;
-    packetDirectory?: Directory;
-    packetFileEntry?: FileEntry;
-    packetResult?: boolean;             // Not part of the schema
+export interface UserPacket {
+  data: User;
+}
+
+export interface StashPacket {
+  data: Stash;
+}
+
+export interface DirectoryPacket {
+  data: Directory;
+}
+
+export interface FileEntryPacket {
+  data: FileEntry;
+}
+
+export interface ChangeResultPacket {
+  data: boolean; // True if the change, such as put and delete, are succesful
 }
 
 /**
