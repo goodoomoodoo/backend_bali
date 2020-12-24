@@ -1,0 +1,7 @@
+mode: development
+branch: remote
+log:
+  level: info
+  time format: YYYY-MM-DD HH:mm:ss
+server:
+  port: 8000

@@ -1,4 +1,5 @@
-env: development
+mode: development
+branch: RAM
 log:
   level: info
   time format: YYYY-MM-DD HH:mm:ss
