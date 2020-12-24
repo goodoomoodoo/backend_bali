@@ -1,0 +1,1 @@
+* Hash scheme uses base64 output
