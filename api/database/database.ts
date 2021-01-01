@@ -3,7 +3,17 @@
  */
 import fs from 'fs';
 import yaml from 'js-yaml';
-import {User, UserPacket, ChangeResultPacket} from '../model/struct';
+import {
+  UserPacket,
+  StashPacket,
+  DirectoryPacket,
+  FileEntryPacket,
+} from '../model/struct';
+import {ResponsePacket} from '../controller/struct';
+
+interface TempObject {
+  [hash: string]: string;
+}
 
 export default abstract class Database {
   mode: string;
@@ -20,11 +30,18 @@ export default abstract class Database {
 
   loadConfig(dirname: string) {
     /* Open up the configuration file in the folder */
-    const dbConfig: any = yaml.safeLoad(
+    const dbConfigRAW: string | object | undefined = yaml.safeLoad(
       fs.readFileSync(dirname + '/config.yaml').toString()
     );
 
-    if (dbConfig.hasOwnProperty('mode') && dbConfig.hasOwnProperty('branch')) {
+    let dbConfig: TempObject;
+    if (typeof dbConfigRAW === 'object') dbConfig = dbConfigRAW as TempObject;
+    else throw new Error('Cannot load database configuration.');
+
+    if (
+      Object.prototype.hasOwnProperty.call(dbConfig, 'mode') &&
+      Object.prototype.hasOwnProperty.call(dbConfig, 'branch')
+    ) {
       this.mode = dbConfig.mode;
       this.branch = dbConfig.branch;
     } else {
@@ -42,6 +59,13 @@ export default abstract class Database {
     return this.mode === mode && this.branch === branch;
   }
 
-  abstract putUser(data: User, res: ChangeResultPacket): Error;
+  abstract putUser(data: any, res: ResponsePacket): Error;
   abstract getUser(userId: string, res: UserPacket): Error;
+  abstract putStash(data: any, res: ResponsePacket): Error;
+  abstract getStash(stashId: string, res: DirectoryPacket): Error;
+  abstract getInventory(userId: string, res: StashPacket): Error;
+  abstract putDirectory(data: any, res: ResponsePacket): Error;
+  abstract getDirectory(stashId: string, res: DirectoryPacket): Error;
+  abstract putFileEntry(data: any, res: ResponsePacket): Error;
+  abstract getFileEntry(directoryId: string, res: FileEntryPacket): Error;
 }
