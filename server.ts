@@ -4,6 +4,7 @@ import morgan from 'morgan';
 
 /* Import the routers */
 import {UserRouter} from './api/controller/UserRouter';
+import {StashRouter} from './api/controller/StashRouter';
 
 export const init = () => {
   /* Root Web Server */
@@ -18,6 +19,7 @@ export const init = () => {
 
   /* Setup routes */
   App.use('/users', UserRouter);
+  App.use('/stash', StashRouter);
 
   /* Serve port */
   App.listen(process.env.PORT, () => {
