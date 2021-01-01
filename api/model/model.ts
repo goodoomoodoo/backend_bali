@@ -9,20 +9,16 @@
 import './struct';
 import {logger} from '../../index';
 import {
-  User,
-  Stash,
-  Directory,
-  FileEntry,
   UserPacket,
   StashPacket,
   DirectoryPacket,
   FileEntryPacket,
-  ChangeResultPacket,
 } from './struct';
+import {ResponsePacket} from '../controller/struct';
 
 /* Import all different database */
 import Database from '../database/database';
-import RAMDatabase from '../database/ram/store';
+import RAMDatabase from '../database/ram/RAMDatabase';
 
 class DBDistributor {
   databases: Database[];
@@ -57,77 +53,100 @@ class DBDistributor {
 
     this.putUser = this.putUser.bind(this);
     this.getUser = this.getUser.bind(this);
+    this.putStash = this.putStash.bind(this);
+    this.getStash = this.getStash.bind(this);
+    this.getInventory = this.getInventory.bind(this);
   }
 
-  putUser(data: User, res: ChangeResultPacket): Error {
+  /**
+   * Write user to the active database
+   * @param {any} data
+   * @param {ResponsePacket} res
+   * @return {Error | null}
+   */
+  putUser(data: any, res: ResponsePacket): Error {
     return this.activeDb.putUser(data, res);
   }
 
+  /**
+   * Retrive user from the active database
+   * @param {string} userId
+   * @param {UserPacket} res
+   * @return {Error | null}
+   */
   getUser(userId: string, res: UserPacket): Error {
     return this.activeDb.getUser(userId, res);
+  }
+
+  /**
+   * Write stash to the active database
+   * @param {any} data
+   * @param {ResponsePacket} res
+   * @return {Error | null}
+   */
+  putStash(data: any, res: ResponsePacket): Error {
+    return this.activeDb.putStash(data, res);
+  }
+
+  /**
+   * Retrieve directories and files of the stash from the active database
+   * @param {any} data
+   * @param {DirectoryPacket} res
+   * @return {Error | null}
+   */
+  getStash(stashId: string, res: DirectoryPacket): Error {
+    return this.activeDb.getStash(stashId, res);
+  }
+
+  /**
+   * Retrive stash from the active database
+   * @param {string} stashId
+   * @param {StashPacket} res
+   * @return {Error | null}
+   */
+  getInventory(userId: string, res: StashPacket): Error {
+    return this.activeDb.getInventory(userId, res);
+  }
+
+  /**
+   * Write directory to the active database
+   * @param {any} data
+   * @param {ResponsePacket} res
+   * @return {Error | null}
+   */
+  putDirectory(data: any, res: ResponsePacket): Error {
+    return this.activeDb.putDirectory(data, res);
+  }
+
+  /**
+   * Retrive directory from the active database
+   * @param {string} directoryId
+   * @param {DirectoryPacket} res
+   * @return {Error | null}
+   */
+  getDirectory(directoryId: string, res: DirectoryPacket): Error {
+    return this.activeDb.getDirectory(directoryId, res);
+  }
+
+  /**
+   * Write file to the active database
+   * @param {any} data
+   * @param {ResponsePacket} res
+   * @return {Error | null}
+   */
+  putFileEntry(data: any, res: ResponsePacket): Error {
+    return this.activeDb.putFileEntry(data, res);
+  }
+
+  /**
+   * Retrive file from the active database
+   * @param {string} userId
+   * @param {FileEntry} res
+   * @return {Error | null}
+   */
+  getFileEntry(fileEntryId: string, res: FileEntryPacket): Error {
+    return this.activeDb.getFileEntry(fileEntryId, res);
   }
 }
 
 export const dbDistributor = new DBDistributor();
-
-/*******************************************************************************
- *
- * User table
- *
- ******************************************************************************/
-
-export function putUser(newUser: User, res: ChangeResultPacket): Error {
-  return null as any;
-}
-
-export function getUser(userId: string, res: UserPacket): Error {
-  return null as any;
-}
-
-/*******************************************************************************
- *
- * Stash table
- *
- ******************************************************************************/
-
-export function putStash(newStash: Stash, res: ChangeResultPacket): Error {
-  return null as any;
-}
-
-export function getStash(stashId: string, res: StashPacket): Error {
-  return null as any;
-}
-
-/*******************************************************************************
- *
- * Directory table
- *
- ******************************************************************************/
-
-export function putDirectory(
-  newDirectory: Directory,
-  res: ChangeResultPacket
-): Error {
-  return null as any;
-}
-
-export function getDirectory(directoryId: string, res: DirectoryPacket): Error {
-  return null as any;
-}
-
-/*******************************************************************************
- *
- * FileEntry table
- *
- ******************************************************************************/
-
-export function putFileEntry(
-  newFileEntry: FileEntry,
-  res: ChangeResultPacket
-): Error {
-  return null as any;
-}
-
-export function getFileEntry(fileEntryId: string, res: FileEntryPacket): Error {
-  return null as any;
-}
