@@ -4,13 +4,49 @@
  * Note: version number always starts at 1, sent by client.
  */
 
-export const instanceOf = (keys: string[], data: DBObject) => {
-  for (let key of keys) {
+/**
+ * Convert the any type data into the provided props key
+ * @param {string[]} keys
+ * @param {any} data
+ * @return {any}
+ */
+export const convertToMod = (keys: string[], data: Model): Model => {
+  const newObj: Model = {} as Model;
+
+  for (const key of keys) {
+    if (!Object.prototype.hasOwnProperty.call(data, key)) return null as any;
+    else newObj[key] = data[key];
+  }
+
+  return newObj;
+};
+
+/**
+ * Check if target data is a certain Model type with key props
+ * @param {string[]} keys
+ * @param {DBObject} data
+ * @return {boolean}
+ */
+export const instanceOf = (keys: string[], data: DBObject): boolean => {
+  for (const key of keys) {
     if (!(key in data)) return false;
   }
 
-  return true
-}
+  return true;
+};
+
+/**
+ * Make sure the next Model's version is exactly one above
+ * @param {Model} current
+ * @param {Model} next
+ * @return {boolean}
+ */
+export const isNextVersion = <T extends Model>(
+  current: T,
+  next: T
+): boolean => {
+  return next.version - current.version === 1;
+};
 
 export interface DBObject {
   [hash: string]: number | string;
