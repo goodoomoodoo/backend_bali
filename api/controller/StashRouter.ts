@@ -1,11 +1,11 @@
 import express from 'express';
-import {UserPacket, StashPacket} from '../model/struct';
+import {DirectoryPacket, StashPacket} from '../model/struct';
 import {ResponsePacket} from './struct';
 import {dbDistributor} from '../model/model';
 import {
-  sendClientUser,
-  sendClientResult,
   sendClientStash,
+  sendClientResult,
+  sendClientDirectory,
 } from '../messenger/index';
 import {logger} from '../../index';
 
@@ -15,8 +15,8 @@ router.get('/:id', (req, res) => {
   let error;
 
   /* Retrieve user object from database */
-  const userObj: UserPacket = {} as UserPacket;
-  error = dbDistributor.getUser(req.params.id, userObj);
+  const stashObj: DirectoryPacket = {} as DirectoryPacket;
+  error = dbDistributor.getStash(req.params.id, stashObj);
 
   if (error !== null) {
     logger.write.error(error.message);
@@ -26,7 +26,7 @@ router.get('/:id', (req, res) => {
   }
 
   /* Send user data back to client */
-  sendClientUser(userObj.data, res);
+  sendClientDirectory(stashObj.data, res);
 
   res.end();
 });
@@ -36,7 +36,7 @@ router.put('/', (req, res) => {
 
   /* Put user object to database */
   const result: ResponsePacket = {} as ResponsePacket;
-  error = dbDistributor.putUser(req.body, result);
+  error = dbDistributor.putStash(req.body, result);
 
   if (error !== null) {
     logger.write.error(error.message);
@@ -51,12 +51,12 @@ router.put('/', (req, res) => {
   res.end();
 });
 
-router.get('/inventory/:id', (req, res) => {
+router.put('/directory/', (req, res) => {
   let error;
 
   /* Retrieve user object from database */
-  const stashObj: StashPacket = {} as StashPacket;
-  error = dbDistributor.getInventory(req.params.id, stashObj);
+  const result: ResponsePacket = {} as ResponsePacket;
+  error = dbDistributor.putDirectory(req.body, result);
 
   if (error !== null) {
     logger.write.error(error.message);
@@ -66,9 +66,9 @@ router.get('/inventory/:id', (req, res) => {
   }
 
   /* Send user data back to client */
-  sendClientStash(stashObj.data, res);
+  sendClientResult(result.data, res);
 
   res.end();
 });
 
-export const UserRouter = router;
+export const StashRouter = router;
