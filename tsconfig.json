@@ -13,5 +13,9 @@
     "test/**/*.ts",
     "index.ts",
     "server.ts"
+  ],
+  "exclude": [
+    "build",
+    "node_modules"
   ]
 }
