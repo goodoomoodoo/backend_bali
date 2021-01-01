@@ -13,12 +13,12 @@ export interface Store {
 
 export interface ModelStore<T extends Model> {
   [hash: string]: T;
-} 
+}
 
-export interface UserStore extends ModelStore<User>{}
+export type UserStore = ModelStore<User>;
 
-export interface InventoryStore extends ModelStore<Inventory>{}
+export type InventoryStore = ModelStore<Inventory>;
 
-export interface StashStore extends ModelStore<Stash> {}
+export type StashStore = ModelStore<Stash>;
 
-export interface treeStore extends ModelStore<ModelFile>{}
+export type treeStore = ModelStore<ModelFile>;

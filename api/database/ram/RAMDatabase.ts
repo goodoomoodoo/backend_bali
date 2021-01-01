@@ -18,7 +18,7 @@ class StoreIterator<T extends mod.Model, W extends ModelStore<T>> {
   root: T;
 
   /**
-   * @param {ModelStore<ModelItem>} anyStore 
+   * @param {ModelStore<ModelItem>} anyStore
    */
   constructor(anyStore: W) {
     this.store = anyStore;
@@ -35,8 +35,19 @@ class StoreIterator<T extends mod.Model, W extends ModelStore<T>> {
 
   next(): T {
     if (this.root !== null) {
-      let value: T = this.root;
-      this.root = this.store[value.next];
+      const value: T = this.root;
+
+      if (value.next === '\0') {
+        this.root = null as any; // End of linked list
+      } else if (Object.prototype.hasOwnProperty.call(this.store, value.next)) {
+        this.root = this.store[value.next];
+      } else {
+        logger.write.error(
+          `Internal error detected: next node ${value.next} does not exists.`
+        );
+        this.root = null as any;
+      }
+
       return value;
     } else {
       return null as any;
@@ -44,11 +55,11 @@ class StoreIterator<T extends mod.Model, W extends ModelStore<T>> {
   }
 
   hasNext(): boolean {
-    return this.root !== undefined;
+    return this.root !== null;
   }
 
   end(): any {
-    return undefined;
+    return null;
   }
 }
 
@@ -69,36 +80,14 @@ export default class RAMDatabase extends Database {
   }
 
   /**
-   * Convert the data into the provided props key
-   * @param {string[]} keys
-   * @param {any} data
-   * @return {any}
-   */
-  convertToMod(keys: string[], data: mod.Model): mod.Model {
-    const newObj: mod.Model = {} as mod.Model;
-
-    for (const key of keys) {
-      if (!Object.prototype.hasOwnProperty.call(data, key)) return null as any;
-      else newObj[key] = data[key];
-    }
-
-    return newObj;
-  }
-
-  /**
-   * Write user to the database
-   * @param {any} data
+   * Verify the uploaded user is a valid descendant
+   * @param {mod.User} data
    * @param {ResponsePacket} res
    * @return {Error | null}
    */
-  putUser(data: any, res: ResponsePacket): Error {
-    const dataUser: mod.User = this.convertToMod(
-      mod.UserPropsKey,
-      data
-    ) as mod.User;
-
-    /* If dataUser is null, meaning the data sent is invalid */
-    if (dataUser === null) {
+  verifyUser(data: mod.User, res: ResponsePacket): Error {
+    /* Check if the conversion is successful */
+    if (data === null) {
       res.data = {
         id: RequestError.INVALID_USER,
         success: false,
@@ -107,42 +96,32 @@ export default class RAMDatabase extends Database {
       return null as any;
     }
 
-    logger.write.info(`RAMDatabase: putUser(): user ${data.id}.`);
-
-    /* Check if the user id exists already */
+    /* User exists in the store */
     if (Object.prototype.hasOwnProperty.call(this.store.users, data.id)) {
       const currentUser: mod.User = this.store.users[data.id];
-      const versionGap: number = data.version - currentUser.version;
 
       /* Make sure the next coming version should have 1 exact increment */
-      if (versionGap != 1) {
+      if (!mod.isNextVersion(currentUser, data)) {
+        /* Security: do not return version number */
         res.data = {
           id: RequestError.INVALID_VERSION,
           success: false,
-          /* For security reason, the error message will not expose the current
-          version. */
           message: 'Request error: version provided out of order',
         };
         return null as any;
-      }
 
-      /* This will not work if two users happen to have same id and same
-      version, which is very unlikely. */
+        /* This will not work if two users happen to have same id and same
+        version, which is very unlikely. */
+      }
     } else {
-      /* Create new user and inventory, check if the inventory exists */
+      /* If user doesn't exists, make sure the inventory id has not been
+      occupied */
       if (
-        !Object.prototype.hasOwnProperty.call(
+        Object.prototype.hasOwnProperty.call(
           this.store.inventories,
-          dataUser.inventory
+          data.inventory
         )
       ) {
-        this.store.inventories[dataUser.inventory] = {
-          id: dataUser.inventory,
-          owner: dataUser.id,
-          stashRoot: '\0',
-          version: 1,
-        };
-      } else {
         res.data = {
           id: RequestError.INVALID_INVENTORY,
           success: false,
@@ -153,6 +132,42 @@ export default class RAMDatabase extends Database {
       }
     }
 
+    res.data = {id: RequestError.NONE, success: true, message: ''};
+    return null as any;
+  }
+
+  /**
+   * Write user to the database
+   * @param {any} data
+   * @param {ResponsePacket} res
+   * @return {Error | null}
+   */
+  putUser(data: any, res: ResponsePacket): Error {
+    const dataUser: mod.User = mod.convertToMod(
+      mod.UserPropsKey,
+      data
+    ) as mod.User;
+
+    logger.write.info(`RAMDatabase: putUser(): user ${data.id}.`);
+
+    /* Run database logics and ensure database constraints */
+    const error: Error = this.verifyUser(dataUser, res);
+
+    if (error !== null) return error;
+    else if (!res.data.success) return null as any;
+
+    /* Check if the user id exists already */
+    if (!Object.prototype.hasOwnProperty.call(this.store.users, data.id)) {
+      /* Create new user and inventory, inventory does not exists */
+      this.store.inventories[dataUser.inventory] = {
+        id: dataUser.inventory,
+        owner: dataUser.id,
+        stashRoot: '\0',
+        version: 1,
+      };
+    }
+
+    /* Data write */
     this.store.users[dataUser.id] = dataUser;
     res.data = {
       id: RequestError.NONE,
@@ -184,19 +199,14 @@ export default class RAMDatabase extends Database {
   }
 
   /**
-   * Write stash to the database
-   * @param {any} data
+   * Verify the uploaded Stash
+   * @param {mod.Stash} data
    * @param {ResponsePacket} res
    * @return {Error | null}
    */
-  putStash(data: any, res: ResponsePacket): Error {
-    const dataStash: mod.Stash = this.convertToMod(
-      mod.StashPropsKey,
-      data
-    ) as mod.Stash;
-
-    /* If dataUser is null, meaning the data sent is invalid */
-    if (dataStash === null) {
+  verifyStash(data: mod.Stash, res: ResponsePacket): Error {
+    /* Check if the conversion is successful */
+    if (data === null) {
       res.data = {
         id: RequestError.INVALID_STASH,
         success: false,
@@ -205,29 +215,22 @@ export default class RAMDatabase extends Database {
       return null as any;
     }
 
-    logger.write.info(`RAMDatabase: putStash(): stash ${data.id}.`);
-
-    /* Check if the stash id exists already */
-    if (
-      Object.prototype.hasOwnProperty.call(this.store.stashes, dataStash.id)
-    ) {
-      const currentStash: mod.Stash = this.store.stashes[dataStash.id];
-      const versionGap: number = data.version - currentStash.version;
+    if (Object.prototype.hasOwnProperty.call(this.store.stashes, data.id)) {
+      const currentStash: mod.Stash = this.store.stashes[data.id];
 
       /* Make sure the next coming version should have 1 exact increment */
-      if (versionGap != 1) {
+      if (!mod.isNextVersion(currentStash, data)) {
+        /* Security: do not return version number */
         res.data = {
           id: RequestError.INVALID_VERSION,
           success: false,
-          /* For security reason, the error message will not expose the current
-          version. */
-          message: 'Request error: stash version provided out of order.',
+          message: 'Request error: version provided out of order',
         };
         return null as any;
       }
 
       /* Make sure the change request is submitted by the owner */
-      if (currentStash.owner != dataStash.owner) {
+      if (currentStash.owner != data.owner) {
         res.data = {
           id: RequestError.UNAUTHORIZED_CHANGE,
           success: false,
@@ -235,12 +238,40 @@ export default class RAMDatabase extends Database {
         };
         return null as any;
       }
+    }
 
-      /* If all check passes, update the pointer */
+    res.data = {id: RequestError.NONE, success: true, message: ''};
+    return null as any;
+  }
+
+  /**
+   * Write stash to the database
+   * @param {any} data
+   * @param {ResponsePacket} res
+   * @return {Error | null}
+   */
+  putStash(data: any, res: ResponsePacket): Error {
+    /* Returns null if data not convertable */
+    const dataStash: mod.Stash = mod.convertToMod(
+      mod.StashPropsKey,
+      data
+    ) as mod.Stash;
+
+    logger.write.info(`RAMDatabase: putStash(): stash ${data.id}.`);
+
+    const error: Error = this.verifyStash(dataStash, res);
+
+    if (error !== null) return error;
+    else if (!res.data.success) return null as any;
+
+    /* If the stash id exists already */
+    if (
+      Object.prototype.hasOwnProperty.call(this.store.stashes, dataStash.id)
+    ) {
+      const currentStash: mod.Stash = this.store.stashes[dataStash.id];
+
+      /* Merge uploaded data stash to the stash store linked list */
       dataStash.next = currentStash.next;
-
-      /* This will not work if two stashes happen to have same id, same owner,
-      and same version, which is very unlikely. */
     } else {
       logger.write.info('RAMDatabase: putStash(): add stash to inventory.');
 
@@ -250,31 +281,26 @@ export default class RAMDatabase extends Database {
         currentUser.inventory
       ];
 
-      /* Inver the stash ID to the linked list */
+      /* Insert the stash ID to the linked list */
       if (currentInventory.stashRoot !== '\0') {
-        if (
-          !Object.prototype.hasOwnProperty.call(
-            this.store.stashes,
-            currentInventory.stashRoot
-          )
-        ) {
-          return new Error('RAMDatabase: putStash(): root stash not found.');
-        }
+        logger.write.debug(
+          'RAMDatabase: putStash(): insert to stashRoot ' +
+            currentInventory.stashRoot +
+            '.'
+        );
 
         const stashRoot: mod.Stash = this.store.stashes[
           currentInventory.stashRoot
         ];
+
         dataStash.next = stashRoot.next;
         stashRoot.next = dataStash.id;
         this.store.stashes[currentInventory.stashRoot] = stashRoot;
       } else {
+        logger.write.debug('RAMDatabase: putStash(): create new stashRoot.');
         currentInventory.stashRoot = dataStash.id;
         this.store.inventories[currentInventory.id] = currentInventory;
       }
-
-      logger.write.debug(
-        `RAMDatabase: putStash(): stash table ${currentInventory.stashRoot}`
-      );
     }
 
     /* Copy the next node over */
@@ -302,21 +328,14 @@ export default class RAMDatabase extends Database {
 
       const resultArr: mod.ModelItem[] = [];
       const dataStash: mod.Stash = this.store.stashes[stashId];
-      let root: string = dataStash.child;
-      let storeItr: StoreIterator<mod.ModelItem, treeStore> = new StoreIterator(this.store.fileTree);
+      const root: string = dataStash.child;
+      const storeItr: StoreIterator<
+        mod.ModelItem,
+        treeStore
+      > = new StoreIterator(this.store.fileTree);
       storeItr.begin(root);
 
-      while (storeItr.hasNext()) {
-        if (this.store.fileTree.hasOwnProperty(root)) {
-          resultArr.push(this.store.fileTree[root]);
-          let nextDirectory: mod.ModelFile = this.store.fileTree[root];
-          root = nextDirectory.next;
-        } else {
-          return new Error(
-            'Internal error detected: child id does not exists.'
-          );
-        }
-      }
+      while (storeItr.hasNext()) resultArr.push(storeItr.next());
 
       res.data = resultArr;
       logger.write.debug(`RAMDatabase: getStash(): ${resultArr}`);
@@ -324,7 +343,6 @@ export default class RAMDatabase extends Database {
       return null as any;
     } else {
       logger.write.info('RAMDatabase: getStash(): stash not found.');
-
       return null as any;
     }
   }
@@ -385,19 +403,14 @@ export default class RAMDatabase extends Database {
   }
 
   /**
-   * Write directory to the database
-   * @param {any} data
+   * Verify the uploaded directory
+   * @param {mod.Directory} data
    * @param {ResponsePacket} res
    * @return {Error | null}
    */
-  putDirectory(data: any, res: ResponsePacket): Error {
-    const dataDirectory: mod.Directory = this.convertToMod(
-      mod.DirectoryPropsKey,
-      data
-    ) as mod.Directory;
-
-    /* Check if the requested data object is convertable to Directory */
-    if (dataDirectory === null) {
+  verifyDirectory(data: mod.Directory, res: ResponsePacket): Error {
+    /* Check if the conversion is successful */
+    if (data === null) {
       res.data = {
         id: RequestError.INVALID_DIRECTORY,
         success: false,
@@ -406,25 +419,15 @@ export default class RAMDatabase extends Database {
       return null as any;
     }
 
-    logger.write.info(`RAMDatabase: putDirectory(): directory ${data.id}.`);
+    /* If the directory has last version */
+    if (Object.prototype.hasOwnProperty.call(this.store.fileTree, data.id)) {
+      const currentFileTree: mod.ModelFile = this.store.fileTree[data.id];
 
-    /* Check if the directory has been created */
-    if (
-      Object.prototype.hasOwnProperty.call(
-        this.store.fileTree,
-        dataDirectory.id
-      )
-    ) {
-      logger.write.debug('RAMDatabase: putDirectory(): update directory.');
-
-      const currentFileTree: mod.ModelFile = this.store.fileTree[
-        dataDirectory.id
-      ];
       /* Verify that the owner, the stash, and the parent are the same. */
       if (
-        currentFileTree.stash != dataDirectory.stash ||
-        currentFileTree.owner != dataDirectory.owner ||
-        currentFileTree.parent != dataDirectory.parent
+        currentFileTree.stash != data.stash ||
+        currentFileTree.owner != data.owner ||
+        currentFileTree.parent != data.parent
       ) {
         res.data = {
           id: RequestError.UNAUTHORIZED_CHANGE,
@@ -434,8 +437,18 @@ export default class RAMDatabase extends Database {
         return null as any;
       }
 
-      /* TODO: Verify version */
+      /* Verify version descendant */
+      if (!mod.isNextVersion(currentFileTree, data)) {
+        /* Security: do not return version number */
+        res.data = {
+          id: RequestError.INVALID_VERSION,
+          success: false,
+          message: 'Request error: version provided out of order',
+        };
+        return null as any;
+      }
 
+      /* Verify parent's existence */
       if (
         !Object.prototype.hasOwnProperty.call(
           this.store.fileTree,
@@ -450,46 +463,12 @@ export default class RAMDatabase extends Database {
           "Internal error detected: original directory's parent has not been " +
             'created.'
         );
-
-      /* Verify that current parent do have a child of this directory id. */
-      let currentParent: mod.Directory | mod.Stash;
-
-      if (this.store.fileTree.hasOwnProperty(currentFileTree.parent))
-        currentParent = this.store.fileTree[currentFileTree.parent] as mod.Directory;
-      else if (this.store.stashes.hasOwnProperty(currentFileTree.parent))
-        currentParent = this.store.stashes[currentFileTree.parent];
-      else
-        return new Error(
-          'Internal error detected: invalid parent of directory.'
-        );
-
-      let root: string = currentParent.child;
-      let found = false;
-
-      while (root !== '\0') {
-        if (root == currentFileTree.id) {
-          found = true;
-          break;
-        } else if (this.store.fileTree.hasOwnProperty(root)) {
-          const nextDirectory: mod.ModelFile = this.store.fileTree[root];
-          root = nextDirectory.id;
-        } else {
-          return new Error(
-            'Internal error detected: malformed parent directory.'
-          );
-        }
-      }
     } else {
-      logger.write.debug('RAMDatabase: putDirectory(): create directory.');
-
       /* Verify parent do exists */
-      let currentParent: mod.Directory | mod.Stash;
-
-      if (this.store.fileTree.hasOwnProperty(dataDirectory.parent))
-        currentParent = this.store.fileTree[dataDirectory.parent] as mod.Directory;
-      else if (this.store.stashes.hasOwnProperty(dataDirectory.parent))
-        currentParent = this.store.stashes[dataDirectory.parent];
-      else {
+      if (
+        !this.store.fileTree.hasOwnProperty(data.parent) &&
+        !this.store.stashes.hasOwnProperty(data.parent)
+      ) {
         res.data = {
           id: RequestError.INVALID_DIRECTORY,
           success: false,
@@ -497,27 +476,43 @@ export default class RAMDatabase extends Database {
         };
         return null as any;
       }
+    }
 
-      /* Verify this directory has yet to be added */
-      let root: string = currentParent.child;
+    res.data = {id: RequestError.NONE, success: true, message: ''};
+    return null as any;
+  }
 
-      while (root !== '\0') {
-        if (root == dataDirectory.id) {
-          res.data = {
-            id: RequestError.INVALID_DIRECTORY,
-            success: false,
-            message: 'Request error: directory already existed.',
-          };
-          break;
-        } else if (this.store.fileTree.hasOwnProperty(root)) {
-          const nextDirectory: mod.ModelFile = this.store.fileTree[root];
-          root = nextDirectory.next;
-        } else {
-          return new Error(
-            'Internal error detected: malformed parent directory.'
-          );
-        }
-      }
+  /**
+   * Write directory to the database
+   * @param {any} data
+   * @param {ResponsePacket} res
+   * @return {Error | null}
+   */
+  putDirectory(data: any, res: ResponsePacket): Error {
+    const dataDirectory: mod.Directory = mod.convertToMod(
+      mod.DirectoryPropsKey,
+      data
+    ) as mod.Directory;
+
+    logger.write.info(`RAMDatabase: putDirectory(): directory ${data.id}.`);
+
+    /* Check if the directory has been created */
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.store.fileTree,
+        dataDirectory.id
+      )
+    ) {
+      logger.write.debug('RAMDatabase: putDirectory(): update directory.');
+    } else {
+      logger.write.debug('RAMDatabase: putDirectory(): create directory.');
+
+      /* Verify parent do exists */
+      let currentParent: mod.Directory | mod.Stash;
+
+      if (this.store.fileTree.hasOwnProperty(data.parent))
+        currentParent = this.store.fileTree[data.parent] as mod.Directory;
+      else currentParent = this.store.stashes[data.parent];
 
       /* Add directory to parent linked list */
       dataDirectory.next = currentParent.child;
@@ -559,7 +554,7 @@ export default class RAMDatabase extends Database {
       while (root !== '\0') {
         if (this.store.fileTree.hasOwnProperty(root)) {
           resultArr.push(this.store.fileTree[root]);
-          let nextDirectory: mod.ModelFile = this.store.fileTree[root];
+          const nextDirectory: mod.ModelFile = this.store.fileTree[root];
           root = nextDirectory.next;
         } else {
           return new Error(
@@ -571,6 +566,10 @@ export default class RAMDatabase extends Database {
       res.data = resultArr;
     }
 
+    return null as any;
+  }
+
+  verifyFileEntry(data: mod.FileEntry, res: ResponsePacket): Error {
     return null as any;
   }
 
