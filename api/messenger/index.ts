@@ -1,12 +1,16 @@
-import {User, Stash, Directory, FileEntry} from '../model/struct';
+import {User, Stash, Directory, FileEntry, ModelItem} from '../model/struct';
+import {RequestResult} from '../controller/struct';
 import {Response} from 'express';
+import {logger} from '../../index';
 
-export function sendClientResult(result: boolean, res: Response) {
-  const data = {success: result};
+export function sendClientResult(data: RequestResult, res: Response) {
+  logger.write.debug('Sending request result.');
   res.send(JSON.stringify(data));
 }
 
 export function sendClientUser(data: User, res: Response) {
+  logger.write.debug('Sending requested user.');
+
   if (data === null) {
     res.sendStatus(404);
     return;
@@ -15,7 +19,9 @@ export function sendClientUser(data: User, res: Response) {
   res.send(JSON.stringify(data));
 }
 
-export function sendClientStash(data: Stash, res: Response) {
+export function sendClientStash(data: Stash[], res: Response) {
+  logger.write.debug('Sending requested stashes.');
+
   if (data === null) {
     res.sendStatus(404);
     return;
@@ -24,7 +30,9 @@ export function sendClientStash(data: Stash, res: Response) {
   res.send(JSON.stringify(data));
 }
 
-export function sendClientDirectory(data: Directory, res: Response) {
+export function sendClientDirectory(data: ModelItem[], res: Response) {
+  logger.write.debug('Sending requested directory.');
+
   if (data === null) {
     res.sendStatus(404);
     return;
@@ -33,7 +41,9 @@ export function sendClientDirectory(data: Directory, res: Response) {
   res.send(JSON.stringify(data));
 }
 
-export function sendClientFileEntry(data: FileEntry, res: Response) {
+export function sendClientFileEntry(data: FileEntry[], res: Response) {
+  logger.write.debug('Sending requested files.');
+
   if (data === null) {
     res.sendStatus(404);
     return;
