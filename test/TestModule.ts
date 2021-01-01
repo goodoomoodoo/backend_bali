@@ -26,11 +26,8 @@ export const sendRequest = (
     };
 
     const request = http.request(options, res => {
-      res.on('data', callback);
-    });
-
-    request.on('information', info => {
-      expect(info.statusCode).to.equal(200);
+      expect(res.statusCode).to.equal(200, 'Request error');
+      if (res.statusCode === 200) res.on('data', callback);
     });
 
     request.write(dataStr);
@@ -44,11 +41,8 @@ export const sendRequest = (
     };
 
     const request = http.request(options, res => {
-      res.on('data', callback);
-    });
-
-    request.on('information', info => {
-      expect(info.statusCode).to.equal(200);
+      expect(res.statusCode).to.equal(200, 'Request error');
+      if (res.statusCode === 200) res.on('data', callback);
     });
 
     request.end();

@@ -4,9 +4,9 @@
  */
 import {expect} from 'chai';
 import http from 'http';
-import {sendRequest} from './TestModule';
-import {RequestError} from '../api/controller/struct';
-import * as mod from '../api/model/struct';
+import {sendRequest} from '../../TestModule';
+import {RequestError, RequestResult} from '../../../api/controller/struct';
+import * as mod from '../../../api/model/struct';
 
 describe('Basic API Test', () => {
   const newUser: mod.User = {
@@ -42,40 +42,55 @@ describe('Basic API Test', () => {
   };
 
   describe('Put and Get 1 User', () => {
-    it('Put a New User', () => {
-      sendRequest('/users', 'PUT', d => {}, newUser);
+    it('Put a New User', done => {
+      sendRequest('/users', 'PUT', d => {
+        const res: RequestResult = JSON.parse(d.toString('utf8'));
+        if (!res.success) console.log(res.message);
+        done();
+      }, newUser);
     });
 
-    it('Get the New User', () => {
+    it('Get the New User', done => {
       sendRequest('/users/1', 'GET', d => {
         const resPacket: mod.User = JSON.parse(d.toString('utf8'));
         expect(resPacket).to.deep.equal(newUser);
+        done();
       });
     });
   });
 
   describe('Put and Get 1 Stash', () => {
-    it('Put a New Stash', () => {
-      sendRequest('/stash', 'PUT', d => {}, newStash);
+    it('Put a New Stash', done => {
+      sendRequest('/stash', 'PUT', d => {
+        const res: RequestResult = JSON.parse(d.toString('utf8'));
+        if (!res.success) console.log(res.message);
+        done();
+      }, newStash);
     });
 
-    it('Get the New Stash', () => {
+    it('Get the New Stash', done => {
       sendRequest('/users/inventory/1', 'GET', d => {
         const data: mod.Directory[] = JSON.parse(d.toString('utf8'));
         expect(data[0]).to.deep.equal(newStash);
+        done();
       });
     });
   });
 
   describe('Put and Get 1 Directory', () => {
-    it('Put a New Directory', () => {
-      sendRequest('/stash/directory/', 'PUT', d => {}, newDirectory);
+    it('Put a New Directory', done => {
+      sendRequest('/stash/directory/', 'PUT', d => {
+        const res: RequestResult = JSON.parse(d.toString('utf8'));
+        if (!res.success) console.log(res.message);
+        done();
+      }, newDirectory);
     });
 
-    it('Get the New Directory', () => {
+    it('Get the New Directory', done => {
       sendRequest('/stash/1', 'GET', d => {
         const resArray: mod.ModelItem[] = JSON.parse(d.toString('utf-8'));
         expect(resArray[0]).to.deep.equal(newDirectory);
+        done();
       });
     });
   });
