@@ -14,11 +14,11 @@ export interface StashPacket {
 }
 
 export interface DirectoryPacket {
-  data: ModelItem[];
+  data: ModelFile[];
 }
 
 export interface FileEntryPacket {
-  data: FileEntry[];
+  data: FileEntry;
 }
 
 export interface Model extends DBObject {
@@ -129,10 +129,11 @@ export const FileEntryPropsKey: string[] = [
   'id',
   'owner',
   'stash',
+  'parent',
   'next',
   'name',
   'content',
   'createdDate',
-  'timeStamp',
+  'timestamp',
   'version',
 ];
