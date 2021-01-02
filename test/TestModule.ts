@@ -4,7 +4,7 @@
  */
 import {expect} from 'chai';
 import http from 'http';
-import {Model} from '../api/model/struct';
+import {Model} from '../api/model/type';
 
 export const sendRequest = (
   uri: string,

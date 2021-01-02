@@ -6,7 +6,7 @@ import {expect} from 'chai';
 import http from 'http';
 import {sendRequest} from '../../TestModule';
 import {RequestError, RequestResult} from '../../../api/controller/struct';
-import * as mod from '../../../api/model/struct';
+import * as mod from '../../../api/model/type';
 
 describe('Basic API Test', () => {
   const newUser: mod.User = {
