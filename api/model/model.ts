@@ -6,14 +6,14 @@
  * models.
  */
 
-import './struct';
+import './type';
 import {logger} from '../../index';
 import {
   UserPacket,
   StashPacket,
   DirectoryPacket,
   FileEntryPacket,
-} from './struct';
+} from './type';
 import {ResponsePacket} from '../controller/struct';
 
 /* Import all different database */

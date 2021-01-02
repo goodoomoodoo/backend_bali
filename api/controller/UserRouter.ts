@@ -1,5 +1,5 @@
 import express from 'express';
-import {UserPacket, StashPacket} from '../model/struct';
+import {UserPacket, StashPacket} from '../model/type';
 import {ResponsePacket} from './struct';
 import {dbDistributor} from '../model/model';
 import {

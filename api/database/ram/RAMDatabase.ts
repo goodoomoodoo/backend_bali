@@ -6,14 +6,15 @@
  */
 import {logger} from '../../../index';
 import Database from '../database';
-import * as mod from '../../model/struct';
+import * as type from '../../model/type';
+import * as util from "../../model/util";
 import {ResponsePacket, RequestError} from '../../controller/struct';
-import {Store, ModelStore, StashStore, treeStore} from './struct';
+import {Store, ModelStore, StashStore, treeStore} from './Store';
 
 /**
  * Store Iterator
  */
-class StoreIterator<T extends mod.Model, W extends ModelStore<T>> {
+class StoreIterator<T extends type.Model, W extends ModelStore<T>> {
   store: W;
   root: T;
 
@@ -81,11 +82,11 @@ export default class RAMDatabase extends Database {
 
   /**
    * Verify the uploaded user is a valid descendant
-   * @param {mod.User} data
+   * @param  type.User} data
    * @param {ResponsePacket} res
    * @return {Error | null}
    */
-  verifyUser(data: mod.User, res: ResponsePacket): Error {
+  verifyUser(data: type.User, res: ResponsePacket): Error {
     /* Check if the conversion is successful */
     if (data === null) {
       res.data = {
@@ -98,10 +99,10 @@ export default class RAMDatabase extends Database {
 
     /* User exists in the store */
     if (Object.prototype.hasOwnProperty.call(this.store.users, data.id)) {
-      const currentUser: mod.User = this.store.users[data.id];
+      const currentUser: type.User = this.store.users[data.id];
 
       /* Make sure the next coming version should have 1 exact increment */
-      if (!mod.isNextVersion(currentUser, data)) {
+      if (!util.isNextVersion(currentUser, data)) {
         /* Security: do not return version number */
         res.data = {
           id: RequestError.INVALID_VERSION,
@@ -143,10 +144,10 @@ export default class RAMDatabase extends Database {
    * @return {Error | null}
    */
   putUser(data: any, res: ResponsePacket): Error {
-    const dataUser: mod.User = mod.convertToMod(
-      mod.UserPropsKey,
+    const dataUser: type.User = util.convertToMod(
+     type.UserPropsKey,
       data
-    ) as mod.User;
+    ) as type.User;
 
     logger.write.info(`RAMDatabase: putUser(): user ${data.id}.`);
 
@@ -184,7 +185,7 @@ export default class RAMDatabase extends Database {
    * @param {UserPacket} res
    * @return {Error | null}
    */
-  getUser(userId: string, res: mod.UserPacket): Error {
+  getUser(userId: string, res: type.UserPacket): Error {
     if (Object.prototype.hasOwnProperty.call(this.store.users, userId)) {
       logger.write.info(`RAMDatabase: getUser(): user ${userId}.`);
 
@@ -200,11 +201,11 @@ export default class RAMDatabase extends Database {
 
   /**
    * Verify the uploaded Stash
-   * @param {mod.Stash} data
+   * @param  type.Stash} data
    * @param {ResponsePacket} res
    * @return {Error | null}
    */
-  verifyStash(data: mod.Stash, res: ResponsePacket): Error {
+  verifyStash(data: type.Stash, res: ResponsePacket): Error {
     /* Check if the conversion is successful */
     if (data === null) {
       res.data = {
@@ -216,10 +217,10 @@ export default class RAMDatabase extends Database {
     }
 
     if (Object.prototype.hasOwnProperty.call(this.store.stashes, data.id)) {
-      const currentStash: mod.Stash = this.store.stashes[data.id];
+      const currentStash: type.Stash = this.store.stashes[data.id];
 
       /* Make sure the next coming version should have 1 exact increment */
-      if (!mod.isNextVersion(currentStash, data)) {
+      if (!util.isNextVersion(currentStash, data)) {
         /* Security: do not return version number */
         res.data = {
           id: RequestError.INVALID_VERSION,
@@ -252,10 +253,10 @@ export default class RAMDatabase extends Database {
    */
   putStash(data: any, res: ResponsePacket): Error {
     /* Returns null if data not convertable */
-    const dataStash: mod.Stash = mod.convertToMod(
-      mod.StashPropsKey,
+    const dataStash: type.Stash = util.convertToMod(
+     type.StashPropsKey,
       data
-    ) as mod.Stash;
+    ) as type.Stash;
 
     logger.write.info(`RAMDatabase: putStash(): stash ${data.id}.`);
 
@@ -268,7 +269,7 @@ export default class RAMDatabase extends Database {
     if (
       Object.prototype.hasOwnProperty.call(this.store.stashes, dataStash.id)
     ) {
-      const currentStash: mod.Stash = this.store.stashes[dataStash.id];
+      const currentStash: type.Stash = this.store.stashes[dataStash.id];
 
       /* Merge uploaded data stash to the stash store linked list */
       dataStash.next = currentStash.next;
@@ -276,8 +277,8 @@ export default class RAMDatabase extends Database {
       logger.write.info('RAMDatabase: putStash(): add stash to inventory.');
 
       /* Find the inventory the user owns */
-      const currentUser: mod.User = this.store.users[dataStash.owner];
-      const currentInventory: mod.Inventory = this.store.inventories[
+      const currentUser: type.User = this.store.users[dataStash.owner];
+      const currentInventory: type.Inventory = this.store.inventories[
         currentUser.inventory
       ];
 
@@ -289,7 +290,7 @@ export default class RAMDatabase extends Database {
             '.'
         );
 
-        const stashRoot: mod.Stash = this.store.stashes[
+        const stashRoot: type.Stash = this.store.stashes[
           currentInventory.stashRoot
         ];
 
@@ -320,17 +321,17 @@ export default class RAMDatabase extends Database {
    * @param {string} res
    * @return {Error | null}
    */
-  getStash(stashId: string, res: mod.DirectoryPacket): Error {
+  getStash(stashId: string, res: type.DirectoryPacket): Error {
     logger.write.info(`RAMDatabase: getStash(): stash ${stashId}.`);
 
     if (Object.prototype.hasOwnProperty.call(this.store.stashes, stashId)) {
       logger.write.info('RAMDatabase: getStash(): iterating file tree.');
 
-      const resultArr: mod.ModelItem[] = [];
-      const dataStash: mod.Stash = this.store.stashes[stashId];
+      const resultArr: type.ModelItem[] = [];
+      const dataStash: type.Stash = this.store.stashes[stashId];
       const root: string = dataStash.child;
       const storeItr: StoreIterator<
-        mod.ModelItem,
+       type.ModelItem,
         treeStore
       > = new StoreIterator(this.store.fileTree);
       storeItr.begin(root);
@@ -353,11 +354,11 @@ export default class RAMDatabase extends Database {
    * @param {StashPacket} res
    * @return {Error | null}
    */
-  getInventory(userId: string, res: mod.StashPacket): Error {
+  getInventory(userId: string, res: type.StashPacket): Error {
     if (Object.prototype.hasOwnProperty.call(this.store.users, userId)) {
       logger.write.info(`RAMDatabase: getInventory(): user's stash ${userId}.`);
 
-      const currentUser: mod.User = this.store.users[userId];
+      const currentUser: type.User = this.store.users[userId];
 
       /* Internal detector for process error */
       if (
@@ -370,13 +371,13 @@ export default class RAMDatabase extends Database {
       }
 
       /* Get the inventory */
-      const currentInventory: mod.Inventory = this.store.inventories[
+      const currentInventory: type.Inventory = this.store.inventories[
         currentUser.inventory
       ];
 
       /* Get all hashes of the stash ID */
       let stashRoot: string = currentInventory.stashRoot;
-      const stashList: mod.Stash[] = [];
+      const stashList: type.Stash[] = [];
 
       while (stashRoot !== '\0') {
         logger.write.debug(`RAMDatabase: getInventory(): stashId ${stashRoot}`);
@@ -386,7 +387,7 @@ export default class RAMDatabase extends Database {
           return new Error('Internal error detected: stash not created.');
         }
 
-        const currentStash: mod.Stash = this.store.stashes[stashRoot];
+        const currentStash: type.Stash = this.store.stashes[stashRoot];
         stashList.push(currentStash);
         stashRoot = currentStash.next;
       }
@@ -404,11 +405,11 @@ export default class RAMDatabase extends Database {
 
   /**
    * Verify the uploaded directory
-   * @param {mod.Directory} data
+   * @param  type.Directory} data
    * @param {ResponsePacket} res
    * @return {Error | null}
    */
-  verifyDirectory(data: mod.Directory, res: ResponsePacket): Error {
+  verifyDirectory(data: type.Directory, res: ResponsePacket): Error {
     /* Check if the conversion is successful */
     if (data === null) {
       res.data = {
@@ -421,7 +422,7 @@ export default class RAMDatabase extends Database {
 
     /* If the directory has last version */
     if (Object.prototype.hasOwnProperty.call(this.store.fileTree, data.id)) {
-      const currentFileTree: mod.ModelFile = this.store.fileTree[data.id];
+      const currentFileTree: type.ModelFile = this.store.fileTree[data.id];
 
       /* Verify that the owner, the stash, and the parent are the same. */
       if (
@@ -438,7 +439,7 @@ export default class RAMDatabase extends Database {
       }
 
       /* Verify version descendant */
-      if (!mod.isNextVersion(currentFileTree, data)) {
+      if (!util.isNextVersion(currentFileTree, data)) {
         /* Security: do not return version number */
         res.data = {
           id: RequestError.INVALID_VERSION,
@@ -489,10 +490,10 @@ export default class RAMDatabase extends Database {
    * @return {Error | null}
    */
   putDirectory(data: any, res: ResponsePacket): Error {
-    const dataDirectory: mod.Directory = mod.convertToMod(
-      mod.DirectoryPropsKey,
+    const dataDirectory: type.Directory = util.convertToMod(
+     type.DirectoryPropsKey,
       data
-    ) as mod.Directory;
+    ) as type.Directory;
 
     logger.write.info(`RAMDatabase: putDirectory(): directory ${data.id}.`);
 
@@ -508,10 +509,10 @@ export default class RAMDatabase extends Database {
       logger.write.debug('RAMDatabase: putDirectory(): create directory.');
 
       /* Verify parent do exists */
-      let currentParent: mod.Directory | mod.Stash;
+      let currentParent: type.Directory | type.Stash;
 
       if (this.store.fileTree.hasOwnProperty(data.parent))
-        currentParent = this.store.fileTree[data.parent] as mod.Directory;
+        currentParent = this.store.fileTree[data.parent] as type.Directory;
       else currentParent = this.store.stashes[data.parent];
 
       /* Add directory to parent linked list */
@@ -535,15 +536,15 @@ export default class RAMDatabase extends Database {
    * @param {DirectoryPacket} res
    * @return {Error | null}
    */
-  getDirectory(directoryId: string, res: mod.DirectoryPacket): Error {
+  getDirectory(directoryId: string, res: type.DirectoryPacket): Error {
     if (this.store.fileTree.hasOwnProperty(directoryId)) {
-      const resultArr: mod.ModelItem[] = [];
+      const resultArr: type.ModelItem[] = [];
 
-      const data: mod.ModelFile = this.store.fileTree[directoryId];
-      let dataDir: mod.Directory;
+      const data: type.ModelFile = this.store.fileTree[directoryId];
+      let dataDir: type.Directory;
 
-      if (mod.instanceOf(mod.DirectoryPropsKey, data))
-        dataDir = data as mod.Directory;
+      if (util.instanceOf(type.DirectoryPropsKey, data))
+        dataDir = data as type.Directory;
       else {
         res.data = null as any;
         return null as any;
@@ -554,7 +555,7 @@ export default class RAMDatabase extends Database {
       while (root !== '\0') {
         if (this.store.fileTree.hasOwnProperty(root)) {
           resultArr.push(this.store.fileTree[root]);
-          const nextDirectory: mod.ModelFile = this.store.fileTree[root];
+          const nextDirectory: type.ModelFile = this.store.fileTree[root];
           root = nextDirectory.next;
         } else {
           return new Error(
@@ -569,7 +570,7 @@ export default class RAMDatabase extends Database {
     return null as any;
   }
 
-  verifyFileEntry(data: mod.FileEntry, res: ResponsePacket): Error {
+  verifyFileEntry(data: type.FileEntry, res: ResponsePacket): Error {
     return null as any;
   }
 
@@ -589,7 +590,7 @@ export default class RAMDatabase extends Database {
    * @param {FileEntryPacket} res
    * @return {Error | null}
    */
-  getFileEntry(fileEntryId: string, res: mod.FileEntryPacket): Error {
+  getFileEntry(fileEntryId: string, res: type.FileEntryPacket): Error {
     return null as any;
   }
 }

@@ -1,4 +1,4 @@
-import {User, Stash, Directory, FileEntry, ModelItem} from '../model/struct';
+import {User, Stash, Directory, FileEntry, ModelItem} from '../model/type';
 import {RequestResult} from '../controller/struct';
 import {Response} from 'express';
 import {logger} from '../../index';

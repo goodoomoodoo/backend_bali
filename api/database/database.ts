@@ -12,7 +12,7 @@ import {
   Stash,
   Directory,
   FileEntry,
-} from '../model/struct';
+} from '../model/type';
 import {ResponsePacket, RequestError} from '../controller/struct';
 
 interface TempObject {
