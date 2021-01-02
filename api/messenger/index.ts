@@ -41,7 +41,7 @@ export function sendClientDirectory(data: ModelItem[], res: Response) {
   res.send(JSON.stringify(data));
 }
 
-export function sendClientFileEntry(data: FileEntry[], res: Response) {
+export function sendClientFileEntry(data: FileEntry, res: Response) {
   logger.write.debug('Sending requested files.');
 
   if (data === null) {
