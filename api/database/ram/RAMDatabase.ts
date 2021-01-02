@@ -327,11 +327,11 @@ export default class RAMDatabase extends Database {
     if (Object.prototype.hasOwnProperty.call(this.store.stashes, stashId)) {
       logger.write.info('RAMDatabase: getStash(): iterating file tree.');
 
-      const resultArr: type.ModelItem[] = [];
+      const resultArr: type.ModelFile[] = [];
       const dataStash: type.Stash = this.store.stashes[stashId];
       const root: string = dataStash.child;
       const storeItr: StoreIterator<
-       type.ModelItem,
+        type.ModelFile,
         treeStore
       > = new StoreIterator(this.store.fileTree);
       storeItr.begin(root);
@@ -537,8 +537,12 @@ export default class RAMDatabase extends Database {
    * @return {Error | null}
    */
   getDirectory(directoryId: string, res: type.DirectoryPacket): Error {
+    logger.write.info(`RAMDatabase: getDirectory(): directory ${directoryId}.`);
+
     if (this.store.fileTree.hasOwnProperty(directoryId)) {
-      const resultArr: type.ModelItem[] = [];
+      logger.write.debug(`RAMDatabase: getDirectory(): directory found.`);
+
+      const resultArr: type.ModelFile[] = [];
 
       const data: type.ModelFile = this.store.fileTree[directoryId];
       let dataDir: type.Directory;
@@ -565,12 +569,85 @@ export default class RAMDatabase extends Database {
       }
 
       res.data = resultArr;
+    } else {
+      logger.write.debug(`RAMDatabase: getDirectory(): directory found.`);
     }
 
     return null as any;
   }
 
   verifyFileEntry(data: type.FileEntry, res: ResponsePacket): Error {
+    /* Check if the conversion is successful */
+    if (data === null) {
+      res.data = {
+        id: RequestError.INVALID_DIRECTORY,
+        success: false,
+        message: 'Request error: invalid file object.',
+      };
+      return null as any;
+    }
+
+    /* If the directory has last version */
+    if (Object.prototype.hasOwnProperty.call(this.store.fileTree, data.id)) {
+      const currentFileTree: type.ModelFile = this.store.fileTree[data.id];
+
+      /* Verify that the owner, the stash, and the parent are the same. */
+      if (
+        currentFileTree.stash != data.stash ||
+        currentFileTree.owner != data.owner ||
+        currentFileTree.parent != data.parent
+      ) {
+        res.data = {
+          id: RequestError.UNAUTHORIZED_CHANGE,
+          success: false,
+          message: 'Request error: unauthorized changes of file.',
+        };
+        return null as any;
+      }
+
+      /* Verify version descendant */
+      if (!util.isNextVersion(currentFileTree, data)) {
+        /* Security: do not return version number */
+        res.data = {
+          id: RequestError.INVALID_VERSION,
+          success: false,
+          message: 'Request error: version provided out of order',
+        };
+        return null as any;
+      }
+
+      /* Verify parent's existence */
+      if (
+        !Object.prototype.hasOwnProperty.call(
+          this.store.fileTree,
+          currentFileTree.parent
+        ) ||
+        Object.prototype.hasOwnProperty.call(
+          this.store.stashes,
+          currentFileTree.parent
+        )
+      )
+        return new Error(
+          "Internal error detected: original file's parent has not been " +
+            'created.'
+        );
+    } else {
+      /* Verify parent do exists */
+      if (
+        !this.store.fileTree.hasOwnProperty(data.parent) &&
+        !this.store.stashes.hasOwnProperty(data.parent)
+      ) {
+        res.data = {
+          id: RequestError.INVALID_DIRECTORY,
+          success: false,
+          message: `Request error: file parent ${data.parent} does not exists.`,
+        };
+        return null as any;
+      }
+    }
+
+    res.data = {id: RequestError.NONE, success: true, message: ''};
+
     return null as any;
   }
 
@@ -581,6 +658,48 @@ export default class RAMDatabase extends Database {
    * @return {Error | null}
    */
   putFileEntry(data: any, res: ResponsePacket): Error {
+    const dataFileEntry: type.FileEntry = util.convertToMod(
+      type.FileEntryPropsKey,
+      data
+    ) as type.FileEntry;
+
+    logger.write.info(`RAMDatabase: putFileEntry(): file ${data.id}.`);
+
+    const error: Error = this.verifyFileEntry(dataFileEntry, res);
+
+    if (error !== null) return error;
+    else if (!res.data.success) return null as any;
+
+    /* Check if the directory has been created */
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.store.fileTree,
+        dataFileEntry.id
+      )
+    ) {
+      logger.write.debug('RAMDatabase: putFileEntry(): update file.');
+    } else {
+      logger.write.debug('RAMDatabase: putFileEntry(): create file.');
+
+      /* Verify parent do exists */
+      let currentParent: type.Directory | type.Stash;
+
+      if (this.store.fileTree.hasOwnProperty(data.parent))
+        currentParent = this.store.fileTree[data.parent] as type.Directory;
+      else currentParent = this.store.stashes[data.parent];
+
+      /* Add directory to parent linked list */
+      dataFileEntry.next = currentParent.child;
+      currentParent.child = dataFileEntry.id;
+    }
+
+    this.store.fileTree[dataFileEntry.id] = dataFileEntry;
+    res.data = {
+      id: RequestError.NONE,
+      success: true,
+      message: 'Put file success.'
+    };
+
     return null as any;
   }
 
@@ -591,6 +710,16 @@ export default class RAMDatabase extends Database {
    * @return {Error | null}
    */
   getFileEntry(fileEntryId: string, res: type.FileEntryPacket): Error {
+    logger.write.info(`RAMDatabase: getFileEntry(): file ${fileEntryId}.`);
+
+    if (Object.prototype.hasOwnProperty.call(this.store.fileTree, fileEntryId)) {
+      const candidateFile: type.ModelFile = this.store.fileTree[fileEntryId];
+
+      if (util.instanceOf(type.FileEntryPropsKey, candidateFile)) {
+        res.data = candidateFile as type.FileEntry;
+        return null as any;
+      }
+    }
     return null as any;
   }
 }
