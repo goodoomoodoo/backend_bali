@@ -27,7 +27,7 @@ class DBDistributor {
   constructor() {
     logger.write.info('DBDistributor initializing...');
 
-    this.databases = [new RAMDatabase()];
+    this.databases = [new RAMDatabase(logger)];
     this.activeDb = null as any;
 
     /* Find the database that matches the configuration */
@@ -50,12 +50,6 @@ class DBDistributor {
           `Cannot find database of [mode: ${mode} && branch: ${branch}]`
         );
     }
-
-    this.putUser = this.putUser.bind(this);
-    this.getUser = this.getUser.bind(this);
-    this.putStash = this.putStash.bind(this);
-    this.getStash = this.getStash.bind(this);
-    this.getInventory = this.getInventory.bind(this);
   }
 
   /**
@@ -104,8 +98,8 @@ class DBDistributor {
    * @param {StashPacket} res
    * @return {Error | null}
    */
-  getInventory(userId: string, res: StashPacket): Error {
-    return this.activeDb.getInventory(userId, res);
+  getInventory(inventoryId: string, res: StashPacket): Error {
+    return this.activeDb.getInventory(inventoryId, res);
   }
 
   /**
