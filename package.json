@@ -13,7 +13,8 @@
     "fix": "gts fix",
     "prepare": "npm run compile",
     "pretest": "npm run compile",
-    "sanity-test": "mocha -r ts-node/register test/**/*Test.ts -g '^Basic*'",
+    "dev-test": "mocha -r ts-node/register test/unit/database/*.ts",
+    "sanity-test": "mocha -r ts-node/register test/unit/api/*Test.ts -g '^Basic*'",
     "test": "mocha -r ts-node/register test/**/*Test.ts"
   },
   "keywords": [
