@@ -1,7 +1,7 @@
 mode: development
 branch: RAM
 log:
-  level: info
+  level: debug
   time format: YYYY-MM-DD HH:mm:ss
 server:
   port: 8000
