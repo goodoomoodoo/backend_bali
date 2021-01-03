@@ -1,7 +1,7 @@
 /**
  * util.ts stores the utility functions of the model.
  */
-import { Model, DBObject } from "./type";
+import {Model, DBObject} from './type';
 
 /**
  * Convert the any type data into the provided props key
@@ -13,10 +13,8 @@ export const convertToMod = (keys: string[], data: Model): Model => {
   const newObj: Model = {} as Model;
 
   for (const key of keys) {
-    if (!Object.prototype.hasOwnProperty.call(data, key))
-      return null as any;
-    else
-      newObj[key] = data[key];
+    if (!Object.prototype.hasOwnProperty.call(data, key)) return null as any;
+    else newObj[key] = data[key];
   }
 
   return newObj;
@@ -30,8 +28,7 @@ export const convertToMod = (keys: string[], data: Model): Model => {
 
 export const instanceOf = (keys: string[], data: DBObject): boolean => {
   for (const key of keys) {
-    if (!(key in data))
-      return false;
+    if (!(key in data)) return false;
   }
 
   return true;
