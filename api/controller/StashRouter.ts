@@ -68,7 +68,7 @@ router.get('/directory/:id', (req, res) => {
   sendClientDirectory(packet.data, res);
 
   res.end();
-})
+});
 
 router.put('/directory/', (req, res) => {
   let error;
@@ -123,6 +123,6 @@ router.put('/file/', (req, res) => {
   sendClientResult(result.data, res);
 
   res.end();
-})
+});
 
 export const StashRouter = router;
