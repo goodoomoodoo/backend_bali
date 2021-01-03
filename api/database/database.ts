@@ -14,6 +14,7 @@ import {
   FileEntry,
 } from '../model/type';
 import {ResponsePacket, RequestError} from '../controller/struct';
+import { LoggerWrapper } from '../../winston/logger';
 
 interface TempObject {
   [hash: string]: string;
@@ -22,12 +23,14 @@ interface TempObject {
 export default abstract class Database {
   mode: string;
   branch: string;
+  logger: LoggerWrapper;
 
-  constructor() {
+  constructor(logger: LoggerWrapper) {
     /* Bind instance method */
     this.loadConfig = this.loadConfig.bind(this);
     this.match = this.match.bind(this);
 
+    this.logger = logger;
     this.mode = '';
     this.branch = '';
   }

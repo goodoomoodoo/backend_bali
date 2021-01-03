@@ -4,12 +4,12 @@
  * Note: the put subroutine can be refractored into a function to shorten the
  * code.
  */
-import {logger} from '../../../index';
 import Database from '../database';
 import * as type from '../../model/type';
-import * as util from "../../model/util";
+import * as util from '../../model/util';
 import {ResponsePacket, RequestError} from '../../controller/struct';
-import {Store, ModelStore, StashStore, treeStore} from './Store';
+import {Store, ModelStore, treeStore, StashStore} from './Store';
+import {LoggerWrapper} from '../../../winston/logger';
 
 /**
  * Store Iterator
@@ -17,20 +17,24 @@ import {Store, ModelStore, StashStore, treeStore} from './Store';
 class StoreIterator<T extends type.Model, W extends ModelStore<T>> {
   store: W;
   root: T;
+  logger: LoggerWrapper;
 
   /**
    * @param {ModelStore<ModelItem>} anyStore
    */
-  constructor(anyStore: W) {
+  constructor(anyStore: W, logger: LoggerWrapper) {
     this.store = anyStore;
     this.root = null as any;
+    this.logger = logger;
 
     this.begin = this.begin.bind(this);
     this.next = this.next.bind(this);
   }
 
   begin(anyId: string): StoreIterator<T, W> {
-    this.root = this.store[anyId];
+    if (Object.prototype.hasOwnProperty.call(this.store, anyId))
+      this.root = this.store[anyId];
+    else this.root = null as any;
     return this;
   }
 
@@ -43,7 +47,7 @@ class StoreIterator<T extends type.Model, W extends ModelStore<T>> {
       } else if (Object.prototype.hasOwnProperty.call(this.store, value.next)) {
         this.root = this.store[value.next];
       } else {
-        logger.write.error(
+        this.logger.write.error(
           `Internal error detected: next node ${value.next} does not exists.`
         );
         this.root = null as any;
@@ -67,8 +71,8 @@ class StoreIterator<T extends type.Model, W extends ModelStore<T>> {
 export default class RAMDatabase extends Database {
   store: Store;
 
-  constructor() {
-    super();
+  constructor(logger: LoggerWrapper) {
+    super(logger);
     this.store = {
       users: {},
       inventories: {},
@@ -145,11 +149,11 @@ export default class RAMDatabase extends Database {
    */
   putUser(data: any, res: ResponsePacket): Error {
     const dataUser: type.User = util.convertToMod(
-     type.UserPropsKey,
+      type.UserPropsKey,
       data
     ) as type.User;
 
-    logger.write.info(`RAMDatabase: putUser(): user ${data.id}.`);
+    this.logger.write.info(`RAMDatabase: putUser(): user ${data.id}.`);
 
     /* Run database logics and ensure database constraints */
     const error: Error = this.verifyUser(dataUser, res);
@@ -187,12 +191,12 @@ export default class RAMDatabase extends Database {
    */
   getUser(userId: string, res: type.UserPacket): Error {
     if (Object.prototype.hasOwnProperty.call(this.store.users, userId)) {
-      logger.write.info(`RAMDatabase: getUser(): user ${userId}.`);
+      this.logger.write.info(`RAMDatabase: getUser(): user ${userId}.`);
 
       res.data = this.store.users[userId];
       return null as any;
     } else {
-      logger.write.info(`RAMDatabase: getUser(): ${userId} not found.`);
+      this.logger.write.info(`RAMDatabase: getUser(): ${userId} not found.`);
 
       res.data = null as any;
       return null as any;
@@ -254,11 +258,11 @@ export default class RAMDatabase extends Database {
   putStash(data: any, res: ResponsePacket): Error {
     /* Returns null if data not convertable */
     const dataStash: type.Stash = util.convertToMod(
-     type.StashPropsKey,
+      type.StashPropsKey,
       data
     ) as type.Stash;
 
-    logger.write.info(`RAMDatabase: putStash(): stash ${data.id}.`);
+    this.logger.write.info(`RAMDatabase: putStash(): stash ${data.id}.`);
 
     const error: Error = this.verifyStash(dataStash, res);
 
@@ -274,7 +278,7 @@ export default class RAMDatabase extends Database {
       /* Merge uploaded data stash to the stash store linked list */
       dataStash.next = currentStash.next;
     } else {
-      logger.write.info('RAMDatabase: putStash(): add stash to inventory.');
+      this.logger.write.info('RAMDatabase: putStash(): add stash to inventory.');
 
       /* Find the inventory the user owns */
       const currentUser: type.User = this.store.users[dataStash.owner];
@@ -284,21 +288,15 @@ export default class RAMDatabase extends Database {
 
       /* Insert the stash ID to the linked list */
       if (currentInventory.stashRoot !== '\0') {
-        logger.write.debug(
+        this.logger.write.debug(
           'RAMDatabase: putStash(): insert to stashRoot ' +
             currentInventory.stashRoot +
             '.'
         );
-
-        const stashRoot: type.Stash = this.store.stashes[
-          currentInventory.stashRoot
-        ];
-
-        dataStash.next = stashRoot.next;
-        stashRoot.next = dataStash.id;
-        this.store.stashes[currentInventory.stashRoot] = stashRoot;
+        dataStash.next = currentInventory.stashRoot;
+        currentInventory.stashRoot = dataStash.id;
       } else {
-        logger.write.debug('RAMDatabase: putStash(): create new stashRoot.');
+        this.logger.write.debug('RAMDatabase: putStash(): create new stashRoot.');
         currentInventory.stashRoot = dataStash.id;
         this.store.inventories[currentInventory.id] = currentInventory;
       }
@@ -322,10 +320,10 @@ export default class RAMDatabase extends Database {
    * @return {Error | null}
    */
   getStash(stashId: string, res: type.DirectoryPacket): Error {
-    logger.write.info(`RAMDatabase: getStash(): stash ${stashId}.`);
+    this.logger.write.info(`RAMDatabase: getStash(): stash ${stashId}.`);
 
     if (Object.prototype.hasOwnProperty.call(this.store.stashes, stashId)) {
-      logger.write.info('RAMDatabase: getStash(): iterating file tree.');
+      this.logger.write.info('RAMDatabase: getStash(): iterating file tree.');
 
       const resultArr: type.ModelFile[] = [];
       const dataStash: type.Stash = this.store.stashes[stashId];
@@ -333,38 +331,40 @@ export default class RAMDatabase extends Database {
       const storeItr: StoreIterator<
         type.ModelFile,
         treeStore
-      > = new StoreIterator(this.store.fileTree);
+      > = new StoreIterator(this.store.fileTree, this.logger);
       storeItr.begin(root);
 
       while (storeItr.hasNext()) resultArr.push(storeItr.next());
 
       res.data = resultArr;
-      logger.write.debug(`RAMDatabase: getStash(): ${resultArr}`);
+      this.logger.write.debug(`RAMDatabase: getStash(): ${resultArr}`);
 
       return null as any;
     } else {
-      logger.write.info('RAMDatabase: getStash(): stash not found.');
+      this.logger.write.info('RAMDatabase: getStash(): stash not found.');
       return null as any;
     }
   }
 
   /**
    * Retreive stash from the database
-   * @param {string} userId
+   * @param {string} inventoryId
    * @param {StashPacket} res
    * @return {Error | null}
    */
-  getInventory(userId: string, res: type.StashPacket): Error {
-    if (Object.prototype.hasOwnProperty.call(this.store.users, userId)) {
-      logger.write.info(`RAMDatabase: getInventory(): user's stash ${userId}.`);
-
-      const currentUser: type.User = this.store.users[userId];
+  getInventory(inventoryId: string, res: type.StashPacket): Error {
+    if (
+      Object.prototype.hasOwnProperty.call(this.store.inventories, inventoryId)
+    ) {
+      this.logger.write.info(
+        `RAMDatabase: getInventory(): user's inventory ${inventoryId}.`
+      );
 
       /* Internal detector for process error */
       if (
         !Object.prototype.hasOwnProperty.call(
           this.store.inventories,
-          currentUser.inventory
+          inventoryId
         )
       ) {
         return new Error('Internal error detected: inventory not created.');
@@ -372,31 +372,28 @@ export default class RAMDatabase extends Database {
 
       /* Get the inventory */
       const currentInventory: type.Inventory = this.store.inventories[
-        currentUser.inventory
+        inventoryId
       ];
 
       /* Get all hashes of the stash ID */
-      let stashRoot: string = currentInventory.stashRoot;
       const stashList: type.Stash[] = [];
+      const storeItr: StoreIterator<type.Stash, StashStore> = new StoreIterator(
+        this.store.stashes,
+        this.logger
+      );
+      storeItr.begin(currentInventory.stashRoot);
 
-      while (stashRoot !== '\0') {
-        logger.write.debug(`RAMDatabase: getInventory(): stashId ${stashRoot}`);
-
-        /* Make sure the stash ID created do exists */
-        if (!this.store.stashes.hasOwnProperty(stashRoot)) {
-          return new Error('Internal error detected: stash not created.');
-        }
-
-        const currentStash: type.Stash = this.store.stashes[stashRoot];
-        stashList.push(currentStash);
-        stashRoot = currentStash.next;
+      while (storeItr.hasNext()) {
+        stashList.push(storeItr.next());
       }
 
       res.data = stashList;
 
       return null as any;
     } else {
-      logger.write.info(`RAMDatabase: getInventory(): ${userId} not found.`);
+      this.logger.write.info(
+        `RAMDatabase: getInventory(): ${inventoryId} not found.`
+      );
 
       res.data = null as any;
       return null as any;
@@ -491,11 +488,11 @@ export default class RAMDatabase extends Database {
    */
   putDirectory(data: any, res: ResponsePacket): Error {
     const dataDirectory: type.Directory = util.convertToMod(
-     type.DirectoryPropsKey,
+      type.DirectoryPropsKey,
       data
     ) as type.Directory;
 
-    logger.write.info(`RAMDatabase: putDirectory(): directory ${data.id}.`);
+    this.logger.write.info(`RAMDatabase: putDirectory(): directory ${data.id}.`);
 
     /* Check if the directory has been created */
     if (
@@ -504,9 +501,9 @@ export default class RAMDatabase extends Database {
         dataDirectory.id
       )
     ) {
-      logger.write.debug('RAMDatabase: putDirectory(): update directory.');
+      this.logger.write.debug('RAMDatabase: putDirectory(): update directory.');
     } else {
-      logger.write.debug('RAMDatabase: putDirectory(): create directory.');
+      this.logger.write.debug('RAMDatabase: putDirectory(): create directory.');
 
       /* Verify parent do exists */
       let currentParent: type.Directory | type.Stash;
@@ -537,10 +534,10 @@ export default class RAMDatabase extends Database {
    * @return {Error | null}
    */
   getDirectory(directoryId: string, res: type.DirectoryPacket): Error {
-    logger.write.info(`RAMDatabase: getDirectory(): directory ${directoryId}.`);
+    this.logger.write.info(`RAMDatabase: getDirectory(): directory ${directoryId}.`);
 
     if (this.store.fileTree.hasOwnProperty(directoryId)) {
-      logger.write.debug(`RAMDatabase: getDirectory(): directory found.`);
+      this.logger.write.debug('RAMDatabase: getDirectory(): directory found.');
 
       const resultArr: type.ModelFile[] = [];
 
@@ -570,7 +567,7 @@ export default class RAMDatabase extends Database {
 
       res.data = resultArr;
     } else {
-      logger.write.debug(`RAMDatabase: getDirectory(): directory found.`);
+      this.logger.write.debug('RAMDatabase: getDirectory(): directory found.');
     }
 
     return null as any;
@@ -663,7 +660,7 @@ export default class RAMDatabase extends Database {
       data
     ) as type.FileEntry;
 
-    logger.write.info(`RAMDatabase: putFileEntry(): file ${data.id}.`);
+    this.logger.write.info(`RAMDatabase: putFileEntry(): file ${data.id}.`);
 
     const error: Error = this.verifyFileEntry(dataFileEntry, res);
 
@@ -677,9 +674,9 @@ export default class RAMDatabase extends Database {
         dataFileEntry.id
       )
     ) {
-      logger.write.debug('RAMDatabase: putFileEntry(): update file.');
+      this.logger.write.debug('RAMDatabase: putFileEntry(): update file.');
     } else {
-      logger.write.debug('RAMDatabase: putFileEntry(): create file.');
+      this.logger.write.debug('RAMDatabase: putFileEntry(): create file.');
 
       /* Verify parent do exists */
       let currentParent: type.Directory | type.Stash;
@@ -697,7 +694,7 @@ export default class RAMDatabase extends Database {
     res.data = {
       id: RequestError.NONE,
       success: true,
-      message: 'Put file success.'
+      message: 'Put file success.',
     };
 
     return null as any;
@@ -710,9 +707,11 @@ export default class RAMDatabase extends Database {
    * @return {Error | null}
    */
   getFileEntry(fileEntryId: string, res: type.FileEntryPacket): Error {
-    logger.write.info(`RAMDatabase: getFileEntry(): file ${fileEntryId}.`);
+    this.logger.write.info(`RAMDatabase: getFileEntry(): file ${fileEntryId}.`);
 
-    if (Object.prototype.hasOwnProperty.call(this.store.fileTree, fileEntryId)) {
+    if (
+      Object.prototype.hasOwnProperty.call(this.store.fileTree, fileEntryId)
+    ) {
       const candidateFile: type.ModelFile = this.store.fileTree[fileEntryId];
 
       if (util.instanceOf(type.FileEntryPropsKey, candidateFile)) {
