@@ -27,7 +27,7 @@ describe('Basic API Test', () => {
     version: 1,
   };
 
-  let newStash1: type.Stash = {
+  const newStash1: type.Stash = {
     id: '2',
     owner: '1',
     name: 'Foo1',
@@ -50,7 +50,7 @@ describe('Basic API Test', () => {
     version: 1,
   };
 
-  let newDirectory1: type.Directory = {
+  const newDirectory1: type.Directory = {
     id: '02',
     name: 'Bar1',
     owner: '1',
@@ -76,7 +76,7 @@ describe('Basic API Test', () => {
     version: 1,
   };
 
-  let newFile1: type.FileEntry = {
+  const newFile1: type.FileEntry = {
     id: '002',
     name: 'Plane',
     owner: '1',
@@ -89,7 +89,7 @@ describe('Basic API Test', () => {
     version: 1,
   };
 
-  let newFile2: type.FileEntry = {
+  const newFile2: type.FileEntry = {
     id: '003',
     name: 'Boat',
     owner: '1',
@@ -104,11 +104,16 @@ describe('Basic API Test', () => {
 
   describe('Put and Get 1 User', () => {
     it('Put a New User', done => {
-      sendRequest('/users', 'PUT', d => {
-        const res: RequestResult = JSON.parse(d.toString('utf8'));
-        if (!res.success) console.log(res.message);
-        done();
-      }, newUser);
+      sendRequest(
+        '/users',
+        'PUT',
+        d => {
+          const res: RequestResult = JSON.parse(d.toString('utf8'));
+          if (!res.success) console.log(res.message);
+          done();
+        },
+        newUser
+      );
     });
 
     it('Get the New User', done => {
@@ -122,15 +127,20 @@ describe('Basic API Test', () => {
 
   describe('Put and Get 1 Stash', () => {
     it('Put a New Stash', done => {
-      sendRequest('/stash', 'PUT', d => {
-        const res: RequestResult = JSON.parse(d.toString('utf8'));
-        if (!res.success) console.log(res.message);
-        done();
-      }, newStash);
+      sendRequest(
+        '/stash',
+        'PUT',
+        d => {
+          const res: RequestResult = JSON.parse(d.toString('utf8'));
+          if (!res.success) console.log(res.message);
+          done();
+        },
+        newStash
+      );
     });
 
     it('Get the New Stash', done => {
-      sendRequest('/users/inventory/1', 'GET', d => {
+      sendRequest('/users/inventory/1234', 'GET', d => {
         const data: type.Stash[] = JSON.parse(d.toString('utf8'));
         expect(data).to.deep.include(newStash);
         done();
@@ -140,11 +150,16 @@ describe('Basic API Test', () => {
 
   describe('Put and Get 1 Directory', () => {
     it('Put a New Directory', done => {
-      sendRequest('/stash/directory/', 'PUT', d => {
-        const res: RequestResult = JSON.parse(d.toString('utf8'));
-        if (!res.success) console.log(res.message);
-        done();
-      }, newDirectory);
+      sendRequest(
+        '/stash/directory/',
+        'PUT',
+        d => {
+          const res: RequestResult = JSON.parse(d.toString('utf8'));
+          if (!res.success) console.log(res.message);
+          done();
+        },
+        newDirectory
+      );
     });
 
     it('Get the New Directory from Stash', done => {
@@ -160,18 +175,23 @@ describe('Basic API Test', () => {
         const data: type.ModelFile[] = JSON.parse(d.toString('utf8'));
         expect(data).to.be.empty;
         done();
-      })
-    })
+      });
+    });
   });
 
   describe('Put and Get 1 File', () => {
     it('Put a New File', done => {
-      sendRequest('/stash/file/', 'PUT', d => {
-        const res: RequestResult = JSON.parse(d.toString('utf8'));
-        if (!res.success) console.log(res.message);
-        expect(res.success).to.be.true;
-        done();
-      }, newFile);
+      sendRequest(
+        '/stash/file/',
+        'PUT',
+        d => {
+          const res: RequestResult = JSON.parse(d.toString('utf8'));
+          if (!res.success) console.log(res.message);
+          expect(res.success).to.be.true;
+          done();
+        },
+        newFile
+      );
     });
 
     it('Get the New File from Directory', done => {
@@ -193,13 +213,18 @@ describe('Basic API Test', () => {
 
   describe('Put and Get another Directory', () => {
     it('Put a New Directory', done => {
-      sendRequest('/stash/directory/', 'PUT', d => {
-        const res: RequestResult = JSON.parse(d.toString('utf-8'));
-        if (!res.success) console.log(res.message);
-        newDirectory1.next = newDirectory.id;
-        expect(res.success).to.be.true;
-        done();
-      }, newDirectory1);
+      sendRequest(
+        '/stash/directory/',
+        'PUT',
+        d => {
+          const res: RequestResult = JSON.parse(d.toString('utf-8'));
+          if (!res.success) console.log(res.message);
+          newDirectory1.next = newDirectory.id;
+          expect(res.success).to.be.true;
+          done();
+        },
+        newDirectory1
+      );
     });
 
     it('Get the New Directory from Stash', done => {
@@ -221,13 +246,18 @@ describe('Basic API Test', () => {
 
   describe('Put and Get another File', () => {
     it('Put a New File', done => {
-      sendRequest('/stash/file/', 'PUT', d => {
-        const res: RequestResult = JSON.parse(d.toString('utf-8'));
-        if (!res.success) console.log(res.message);
-        newFile1.next = newFile.id;
-        expect(res.success).to.be.true;
-        done();
-      }, newFile1);
+      sendRequest(
+        '/stash/file/',
+        'PUT',
+        d => {
+          const res: RequestResult = JSON.parse(d.toString('utf-8'));
+          if (!res.success) console.log(res.message);
+          newFile1.next = newFile.id;
+          expect(res.success).to.be.true;
+          done();
+        },
+        newFile1
+      );
     });
 
     it('Get the New File from Directory', done => {
@@ -249,20 +279,25 @@ describe('Basic API Test', () => {
 
   describe('Put and Get another Stash', () => {
     it('Put a New Stash', done => {
-      sendRequest('/stash', 'PUT', d => {
-        const res: RequestResult = JSON.parse(d.toString('utf8'));
-        if (!res.success) console.log(res.message);
-        newStash1.next = newStash.id;
-        done();
-      }, newStash1);
+      sendRequest(
+        '/stash',
+        'PUT',
+        d => {
+          const res: RequestResult = JSON.parse(d.toString('utf8'));
+          if (!res.success) console.log(res.message);
+          newStash1.next = newStash.id;
+          done();
+        },
+        newStash1
+      );
     });
 
     it('Get the New Stash', done => {
-      sendRequest('/users/inventory/1', 'GET', d => {
+      sendRequest('/users/inventory/1234', 'GET', d => {
         const data: type.Stash[] = JSON.parse(d.toString('utf8'));
         expect(data).to.deep.include(newStash1);
         done();
       });
     });
-  })
+  });
 });
